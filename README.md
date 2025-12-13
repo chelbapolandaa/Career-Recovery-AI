@@ -1,8 +1,10 @@
 # 🧠 Career Recovery AI
-![GitHub last commit](https://img.shields.io/github/last-commit/chelbapolandaa/Career-Recovery-AI)
-![GitHub repo size](https://img.shields.io/github/repo-size/chelbapolandaa/Career-Recovery-AI)
-![GitHub language count](https://img.shields.io/github/languages/count/chelbapolandaa/Career-Recovery-AI)
-[![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com/)
+![GitHub last commit](https://img.shields.io/github/last-commit/chelbapolandaa/Career-Recovery-AI?style=flat-square)
+![GitHub repo size](https://img.shields.io/github/repo-size/chelbapolandaa/Career-Recovery-AI?style=flat-square)
+![GitHub language count](https://img.shields.io/github/languages/count/chelbapolandaa/Career-Recovery-AI?style=flat-square)
+![GitHub stars](https://img.shields.io/github/stars/chelbapolandaa/Career-Recovery-AI?style=flat-square)
+
+[![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://reactjs.org/)
 [![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![SQLite](https://img.shields.io/badge/SQLite-07405E?style=for-the-badge&logo=sqlite&logoColor=white)](https://www.sqlite.org/)

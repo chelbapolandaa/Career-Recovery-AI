@@ -1,0 +1,1 @@
+# Schemas untuk AI recommendations

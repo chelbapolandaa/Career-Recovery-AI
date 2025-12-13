@@ -1,0 +1,1 @@
+# SkillRecommendation model

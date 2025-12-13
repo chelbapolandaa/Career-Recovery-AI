@@ -41,18 +41,11 @@ When you apply to dozens of jobs and get rejected:
 
 ## 🏗️ Architecture
 ---
-┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
-│ React Frontend│◄──►│ FastAPI Backend│◄──►│ SQLite/Postgre│
-│ (Dashboard) │ │ (REST API) │ │ (Database) │
-└─────────────────┘ └─────────────────┘ └─────────────────┘
-│ │ │
-│ │ │
-▼ ▼ ▼
-┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
-│ Module A: │ │ Module B: │ │ Module C: │
-│ App Tracker │ │ AI Analyzer │ │ Strategy Engine│
-│ (CRUD + Stats) │ │ (Patterns) │ │ (Decisions) │
-└─────────────────┘ └─────────────────┘ └─────────────────┘
+
+**Data Flow:**
+1. **User Interface** ←→ **API Layer** ←→ **Data Storage**
+2. **Business Logic** distributed across specialized modules
+3. **Extensible design** for additional modules (D, E, etc.)
 
 ## 📁 Project Structure
 ---

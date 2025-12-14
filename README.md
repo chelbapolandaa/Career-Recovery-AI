@@ -1,8 +1,13 @@
 # 🧠 Career Recovery AI
+![GitHub last commit](https://img.shields.io/github/last-commit/chelbapolandaa/Career-Recovery-AI?style=flat-square)
+![GitHub repo size](https://img.shields.io/github/repo-size/chelbapolandaa/Career-Recovery-AI?style=flat-square)
+![GitHub language count](https://img.shields.io/github/languages/count/chelbapolandaa/Career-Recovery-AI?style=flat-square)
+![GitHub stars](https://img.shields.io/github/stars/chelbapolandaa/Career-Recovery-AI?style=flat-square)
 
-[![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://reactjs.org/)
 [![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
+[![Groq](https://img.shields.io/badge/Groq-00A67E?style=for-the-badge&logo=groq&logoColor=white)](https://www.groq.org/)
 [![SQLite](https://img.shields.io/badge/SQLite-07405E?style=for-the-badge&logo=sqlite&logoColor=white)](https://www.sqlite.org/)
 
 **AI-powered decision support system for long-term job seekers** - Analyzes rejection patterns, provides strategic recommendations, and prevents burnout during job search.
@@ -35,20 +40,23 @@ When you apply to dozens of jobs and get rejected:
 - ✅ **Burnout Prevention**: Monitors stress and suggests optimal pace
 - ✅ **Weekly Reports**: Data-driven progress tracking
 
+## ✨ New Features: AI-Powered Analytics
+---
+🎯 **Just Added**: **Groq AI Integration** - Get intelligent insights powered by LLMs
+
+### 🆕 AI-Enhanced Analytics Dashboard
+- **🤖 Smart Pattern Detection**: AI identifies hidden rejection patterns
+- **🎯 Personalized Recommendations**: Tailored career advice
+- **📊 Advanced Metrics**: Deep analysis beyond basic statistics
+- **⚡ Real-time Insights**: Instant AI analysis
+
 ## 🏗️ Architecture
 ---
-┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
-│ React Frontend│◄──►│ FastAPI Backend│◄──►│ SQLite/Postgre│
-│ (Dashboard) │ │ (REST API) │ │ (Database) │
-└─────────────────┘ └─────────────────┘ └─────────────────┘
-│ │ │
-│ │ │
-▼ ▼ ▼
-┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
-│ Module A: │ │ Module B: │ │ Module C: │
-│ App Tracker │ │ AI Analyzer │ │ Strategy Engine│
-│ (CRUD + Stats) │ │ (Patterns) │ │ (Decisions) │
-└─────────────────┘ └─────────────────┘ └─────────────────┘
+
+**Data Flow:**
+1. **User Interface** ←→ **API Layer** ←→ **Data Storage**
+2. **Business Logic** distributed across specialized modules
+3. **Extensible design** for additional modules (D, E, etc.)
 
 ## 📁 Project Structure
 ---
@@ -56,6 +64,9 @@ When you apply to dozens of jobs and get rejected:
 ## 📸 Screenshots
 ---
 <div align="center">
+
+### 🤖 AI-Powered Analytics Dashboard
+<img src="./screenshots/ai_analytics.png" alt="AI Analytics Dashboard" width="800"/> *New: AI insights panel with pattern detection and recommendations*
 
 ### Dashboard
 <img src="./screenshots/dashboard.png" alt="Chat Bot" width="800"/>
@@ -132,7 +143,13 @@ npm install
 npm run dev
 ```
 
-### 4. Test the System
+### 4. Get Your Groq API Key
+1. Visit [Groq Console](https://console.groq.com)
+2. Sign up for free account
+3. Create API key
+4. Add to your `.env` file
+
+### 5. Test the System
 
 1. Open http://localhost:3000 in browser
 
@@ -147,7 +164,7 @@ npm run dev
 | Module | Icon | Status | Description |
 |--------|------|--------|-------------|
 | **A** | 📝 | ✅ **COMPLETE** | Application Tracker - CRUD operations & basic stats |
-| **B** | 🧠 | 🟡 **MVP READY** | Rejection Pattern Analyzer - Rule-based AI analysis |
+| **B** | 🧠 | ✅ **AI-ENHANCED** | Rejection Pattern Analyzer - Now with Groq AI integration |
 | **C** | 🎯 | 🚧 **PLANNED** | Strategy Pivot Engine - AI decision recommendations |
 | **D** | 😌 | 🚧 **PLANNED** | Burnout & Survival Monitor - Stress tracking |
 | **E** | 📋 | 🚧 **PLANNED** | Weekly Survival Report - Automated reporting |
@@ -204,6 +221,9 @@ curl http://localhost:8000/api/applications
 
 # Get analysis insights
 curl http://localhost:8000/api/analysis/quick-insights
+
+### Test AI Endpoints
+curl http://localhost:8000/api/analysis/ai-insights
 ```
 
 ## 🤝 Contributing
@@ -222,6 +242,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🙏 Acknowledgments
 ---
+**Special Thanks To:**
+- **Groq Team** for providing fast and accessible LLM inference
 
 Built with ❤️ for job seekers struggling with long-term unemployment. The goal is to turn data into actionable insights and hope into strategy.
 

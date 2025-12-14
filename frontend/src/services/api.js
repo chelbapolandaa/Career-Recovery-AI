@@ -5,7 +5,6 @@ const API = axios.create({
   timeout: 10000,
 });
 
-// Applications endpoints (Module A)
 export const applicationsAPI = {
   getAll: () => API.get('/applications'),
   getById: (id) => API.get(`/applications/${id}`),
@@ -15,12 +14,12 @@ export const applicationsAPI = {
   getStats: (days = 30) => API.get(`/applications/stats/summary?days=${days}`),
 };
 
-// Analysis endpoints (Module B - NEW!)
 export const analysisAPI = {
-  getQuickInsights: () => API.get('/analysis/quick-insights'),
-  getRolePerformance: () => API.get('/analysis/role-performance'),
-  getRejectionPatterns: (days = 30) => API.get(`/analysis/rejection-patterns?days=${days}`),
+  getQuickInsights: (days = 30) => API.get(`/analysis/quick-insights?days=${days}`),
+  getRolePerformance: (days = 90) => API.get(`/analysis/role-performance?days=${days}`),
   testAnalysis: () => API.get('/analysis/test'),
+  getAIAnalysis: (days = 90, useAI = true) => API.get(`/analysis/rejection-patterns?days=${days}&use_ai=${useAI}`),
+  testAIIntegration: () => API.get('/analysis/ai-test'),
 };
 
 export default API;

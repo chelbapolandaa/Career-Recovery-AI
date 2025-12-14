@@ -1,12 +1,9 @@
-"""
-Module B: Rejection Pattern Analyzer
-AI system untuk menganalisis pola penolakan job applications
-"""
 import pandas as pd
 from datetime import datetime, timedelta
 from typing import Dict, List, Any, Optional
 import json
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -19,153 +16,268 @@ class RejectionAnalyzer:
             applications_data: List of application dictionaries dari database
         """
         self.data = pd.DataFrame(applications_data)
-        logger.info(f"Analyzer initialized with {len(self.data)} applications")
+        logger.info(f"📊 Analyzer initialized with {len(self.data)} applications")
+        
+        # Check AI availability
+        self.ai_enabled = os.getenv("AI_ENABLED", "false").lower() == "true"
+        if self.ai_enabled:
+            try:
+                from .groq_service import get_groq_coach
+                self.groq_coach = get_groq_coach()
+                logger.info("🤖 AI integration: ENABLED")
+            except ImportError:
+                self.ai_enabled = False
+                logger.warning("🤖 AI integration: DISABLED (groq_service not found)")
+        else:
+            self.ai_enabled = False
+            logger.info("🤖 AI integration: DISABLED (AI_ENABLED=false)")
     
-    def analyze_patterns(self) -> Dict[str, Any]:
+    def analyze_patterns(self, include_ai: bool = True) -> Dict[str, Any]:
         """
-        Analisis utama: Identifikasi pola rejection
+        Analisis utama: Identifikasi pola rejection dengan optional AI
+        
+        Args:
+            include_ai: Boolean, apakah include AI insights
+            
+        Returns:
+            Dictionary lengkap dengan analysis
         """
         if self.data.empty:
-            return {"error": "No data to analyze"}
+            return {"error": "No data to analyze", "ai_enabled": False}
         
+        # Basic analysis
+        summary = self._get_summary_stats()
+        role_analysis = self._analyze_by_role()
+        patterns = self._identify_problem_patterns(summary, role_analysis)
+        recommendations = self._generate_recommendations(role_analysis, summary)
+        
+        # Build base result
         results = {
-            "summary": self._get_summary_stats(),
-            "role_analysis": self._analyze_by_role(),
-            "time_analysis": self._analyze_time_patterns(),
-            "problem_patterns": self._identify_problem_patterns(),
-            "recommendations": self._generate_recommendations(),
-            "ai_insights": self._generate_ai_insights()
+            "summary": summary,
+            "role_analysis": role_analysis,
+            "problem_patterns": patterns,
+            "recommendations": recommendations,
+            "metadata": {
+                "total_applications": len(self.data),
+                "analysis_date": datetime.now().isoformat(),
+                "ai_enabled": self.ai_enabled and include_ai
+            }
         }
+        
+        # Add AI insights jika diminta dan available
+        if include_ai and self.ai_enabled and self.groq_coach:
+            try:
+                # Prepare data for AI
+                ai_data = {
+                    "summary": summary,
+                    "role_analysis": role_analysis,
+                    "patterns": patterns,
+                    "time_period_days": 30  # Default, bisa diadjust
+                }
+                
+                # Get AI insights
+                ai_insights = self.groq_coach.enhance_analysis(ai_data)
+                
+                results["ai_insights"] = ai_insights
+                results["metadata"]["ai_used"] = True
+                results["metadata"]["ai_model"] = ai_insights.get("model", "unknown")
+                results["metadata"]["ai_cached"] = ai_insights.get("cached", False)
+                
+            except Exception as e:
+                logger.error(f"AI analysis failed: {e}")
+                results["ai_insights"] = {"error": str(e), "fallback": True}
+                results["metadata"]["ai_used"] = False
+        else:
+            # Add basic text insights jika AI tidak digunakan
+            results["text_insights"] = self._generate_text_insights(summary, patterns, recommendations)
+            results["metadata"]["ai_used"] = False
         
         return results
     
     def _get_summary_stats(self) -> Dict:
-        """Statistik summary"""
+        """Statistik summary lengkap"""
+        if self.data.empty:
+            return {
+                "total_applications": 0,
+                "rejected_count": 0,
+                "ghosted_count": 0,
+                "interview_count": 0,
+                "rejection_rate": 0,
+                "response_rate": 0,
+                "interview_rate": 0,
+                "ghost_rate": 0
+            }
+        
         total = len(self.data)
-        rejected = len(self.data[self.data['status'] == 'rejected'])
-        ghosted = len(self.data[self.data['status'] == 'ghosted'])
-        interview = len(self.data[self.data['status'] == 'interview'])
+        
+        # Pastikan kolom 'status' ada
+        if 'status' not in self.data.columns:
+            return {
+                "total_applications": total,
+                "rejected_count": 0,
+                "ghosted_count": 0,
+                "interview_count": 0,
+                "rejection_rate": 0,
+                "response_rate": 0,
+                "interview_rate": 0,
+                "ghost_rate": 0
+            }
+        
+        # Count berdasarkan status
+        status_counts = self.data['status'].value_counts()
+        
+        rejected = status_counts.get('rejected', 0)
+        ghosted = status_counts.get('ghosted', 0)
+        interview = status_counts.get('interview', 0)
+        offered = status_counts.get('offer', 0)
+        
+        # Calculate rates
+        rejection_rate = round((rejected / total * 100), 1) if total > 0 else 0
+        response_rate = round(((total - ghosted) / total * 100), 1) if total > 0 else 0
+        interview_rate = round((interview / total * 100), 1) if total > 0 else 0
+        ghost_rate = round((ghosted / total * 100), 1) if total > 0 else 0
         
         return {
             "total_applications": total,
-            "rejected_count": rejected,
-            "ghosted_count": ghosted,
-            "interview_count": interview,
-            "rejection_rate": round((rejected / total * 100), 1) if total > 0 else 0,
-            "response_rate": round(((total - ghosted) / total * 100), 1) if total > 0 else 0,
-            "interview_rate": round((interview / total * 100), 1) if total > 0 else 0
+            "rejected_count": int(rejected),
+            "ghosted_count": int(ghosted),
+            "interview_count": int(interview),
+            "offer_count": int(offered),
+            "rejection_rate": rejection_rate,
+            "response_rate": response_rate,
+            "interview_rate": interview_rate,
+            "ghost_rate": ghost_rate
         }
     
     def _analyze_by_role(self) -> List[Dict]:
         """Analisis berdasarkan role category"""
-        if 'role_category' not in self.data.columns:
+        if self.data.empty or 'role_category' not in self.data.columns:
             return []
         
         role_analysis = []
+        
+        # Group by role
         for role in self.data['role_category'].unique():
+            if pd.isna(role):
+                continue
+                
             role_data = self.data[self.data['role_category'] == role]
             total = len(role_data)
-            rejected = len(role_data[role_data['status'] == 'rejected'])
-            interview = len(role_data[role_data['status'] == 'interview'])
+            
+            # Count statuses untuk role ini
+            status_counts = role_data['status'].value_counts()
+            
+            rejected = status_counts.get('rejected', 0)
+            interview = status_counts.get('interview', 0)
+            ghosted = status_counts.get('ghosted', 0)
+            
+            # Calculate rates
+            rejection_rate = round((rejected / total * 100), 1) if total > 0 else 0
+            interview_rate = round((interview / total * 100), 1) if total > 0 else 0
+            ghost_rate = round((ghosted / total * 100), 1) if total > 0 else 0
+            
+            # Calculate success score (interview - rejection dengan weighting)
+            success_score = (interview_rate * 2) - rejection_rate - ghost_rate
             
             role_analysis.append({
-                "role": role,
+                "role": str(role),
                 "total_applications": total,
-                "rejected": rejected,
-                "interview": interview,
-                "rejection_rate": round((rejected / total * 100), 1) if total > 0 else 0,
-                "interview_rate": round((interview / total * 100), 1) if total > 0 else 0,
-                "success_score": round((interview / total * 100) if total > 0 else 0, 1)
+                "rejected": int(rejected),
+                "interview": int(interview),
+                "ghosted": int(ghosted),
+                "rejection_rate": rejection_rate,
+                "interview_rate": interview_rate,
+                "ghost_rate": ghost_rate,
+                "success_score": round(success_score, 1)
             })
         
         # Sort by success score (highest first)
         role_analysis.sort(key=lambda x: x['success_score'], reverse=True)
+        
         return role_analysis
     
-    def _analyze_time_patterns(self) -> Dict:
-        """Analisis pola waktu"""
-        if 'date_applied' not in self.data.columns:
-            return {}
-        
-        # Convert to datetime
-        self.data['date_applied'] = pd.to_datetime(self.data['date_applied'])
-        
-        # Weekly patterns
-        self.data['week'] = self.data['date_applied'].dt.isocalendar().week
-        weekly_data = self.data.groupby('week').agg({
-            'status': 'count',
-            'id': lambda x: (x == 'interview').sum() if 'interview' in self.data['status'].values else 0
-        }).rename(columns={'status': 'total', 'id': 'interviews'})
-        
-        return {
-            "applications_per_week": weekly_data.to_dict('index'),
-            "best_week": int(weekly_data['interviews'].idxmax()) if not weekly_data.empty else None,
-            "worst_week": int(weekly_data['interviews'].idxmin()) if not weekly_data.empty else None,
-        }
-    
-    def _identify_problem_patterns(self) -> List[Dict]:
-        """Identifikasi pola masalah"""
+    def _identify_problem_patterns(self, summary: Dict, roles: List[Dict]) -> List[Dict]:
+        """Identifikasi pola masalah berdasarkan data"""
         patterns = []
+        total = summary.get('total_applications', 0)
         
-        # Pattern 1: Too many applications to one role type
-        if 'role_category' in self.data.columns:
-            role_counts = self.data['role_category'].value_counts()
-            most_applied_role = role_counts.index[0] if not role_counts.empty else None
-            most_applied_count = role_counts.iloc[0] if not role_counts.empty else 0
-            
-            if most_applied_count > len(self.data) * 0.6:  # >60% ke satu role
-                patterns.append({
-                    "type": "over_specialization",
-                    "severity": "high",
-                    "message": f"Over-specialization: {most_applied_count}/{len(self.data)} applications ({round(most_applied_count/len(self.data)*100)}%) are to {most_applied_role} roles",
-                    "recommendation": "Consider diversifying to related roles"
-                })
+        if total == 0:
+            return patterns
         
-        # Pattern 2: High ghost rate
-        ghost_rate = len(self.data[self.data['status'] == 'ghosted']) / len(self.data) if len(self.data) > 0 else 0
-        if ghost_rate > 0.7:  # >70% ghosted
+        # Pattern 1: High ghost rate
+        ghost_rate = summary.get('ghost_rate', 0)
+        if ghost_rate > 70:
             patterns.append({
                 "type": "high_ghost_rate",
                 "severity": "high",
-                "message": f"High ghost rate: {round(ghost_rate*100)}% of applications get no response",
-                "recommendation": "Improve resume targeting or follow-up strategy"
+                "description": f"High ghost rate: {ghost_rate}% of applications get no response",
+                "suggestion": "Improve resume targeting or add follow-up strategy"
             })
         
-        # Pattern 3: No interviews
-        interview_count = len(self.data[self.data['status'] == 'interview'])
-        if interview_count == 0 and len(self.data) > 10:
+        # Pattern 2: No interviews
+        interview_count = summary.get('interview_count', 0)
+        if interview_count == 0 and total >= 5:
             patterns.append({
                 "type": "no_interviews",
                 "severity": "critical",
-                "message": "No interviews despite multiple applications",
-                "recommendation": "Revise resume and application strategy immediately"
+                "description": "No interviews despite multiple applications",
+                "suggestion": "Revise resume, portfolio, or application strategy"
+            })
+        
+        # Pattern 3: Over-specialization
+        if roles:
+            top_role = roles[0]
+            if top_role['total_applications'] > total * 0.6:  # >60% ke satu role
+                patterns.append({
+                    "type": "over_specialization",
+                    "severity": "medium",
+                    "description": f"Over-specialization: {top_role['total_applications']}/{total} apps to {top_role['role']}",
+                    "suggestion": "Consider diversifying to related roles"
+                })
+        
+        # Pattern 4: Low response rate
+        response_rate = summary.get('response_rate', 0)
+        if response_rate < 20 and total > 10:
+            patterns.append({
+                "type": "low_response_rate",
+                "severity": "medium",
+                "description": f"Low response rate: Only {response_rate}% of applications get responses",
+                "suggestion": "Improve resume or target more relevant positions"
             })
         
         return patterns
     
-    def _generate_recommendations(self) -> List[Dict]:
+    def _generate_recommendations(self, roles: List[Dict], summary: Dict) -> List[Dict]:
         """Generate rekomendasi berdasarkan analisis"""
         recommendations = []
+        total = summary.get('total_applications', 0)
         
-        # Get role analysis
-        role_analysis = self._analyze_by_role()
+        if total == 0:
+            return [{
+                "type": "get_started",
+                "priority": "high",
+                "action": "Start adding job applications",
+                "reason": "No data to analyze yet",
+                "timeline": "Immediate"
+            }]
         
-        if len(role_analysis) >= 2:
-            # Recommend focusing on best performing role
-            best_role = role_analysis[0]
-            worst_role = role_analysis[-1]
+        # Recommendation berdasarkan role performance
+        if len(roles) >= 2:
+            best_role = roles[0]
+            worst_role = roles[-1]
             
-            if best_role['success_score'] > worst_role['success_score'] * 2:  # 2x better
+            # Focus on best performing role
+            if best_role['interview_rate'] > 0:
                 recommendations.append({
                     "type": "focus_role",
                     "priority": "high",
                     "action": f"Focus on {best_role['role']} roles",
-                    "reason": f"{best_role['role']} has {best_role['interview_rate']}% interview rate vs {worst_role['interview_rate']}% for {worst_role['role']}",
+                    "reason": f"{best_role['role']} has {best_role['interview_rate']}% interview rate",
                     "timeline": "Next 2 weeks"
                 })
             
-            # Recommend pausing worst role
-            if worst_role['rejection_rate'] > 80:
+            # Pause worst role jika sangat buruk
+            if worst_role['rejection_rate'] > 80 and worst_role['interview_rate'] == 0:
                 recommendations.append({
                     "type": "pause_role",
                     "priority": "medium",
@@ -175,49 +287,78 @@ class RejectionAnalyzer:
                 })
         
         # Volume recommendation
-        total_apps = len(self.data)
-        if total_apps > 20:
-            apps_per_week = total_apps / 4  # Assuming 4 weeks
+        if total > 20:
+            apps_per_week = total / 4  # Assuming 4 weeks
             if apps_per_week > 10:
                 recommendations.append({
                     "type": "reduce_volume",
                     "priority": "medium",
                     "action": "Reduce application volume",
-                    "reason": f"Currently applying to {round(apps_per_week)} jobs/week. Focus on quality over quantity.",
+                    "reason": f"Currently {round(apps_per_week)} apps/week. Focus on quality.",
                     "timeline": "Immediate"
                 })
         
+        # Response rate recommendation
+        response_rate = summary.get('response_rate', 0)
+        if response_rate < 30:
+            recommendations.append({
+                "type": "improve_response",
+                "priority": "high",
+                "action": "Improve resume and cover letters",
+                "reason": f"Only {response_rate}% response rate",
+                "timeline": "1 week"
+            })
+        
+        # Default recommendation jika tidak ada
+        if not recommendations:
+            recommendations.append({
+                "type": "continue",
+                "priority": "low",
+                "action": "Continue current strategy",
+                "reason": "Data looks reasonable",
+                "timeline": "Monitor weekly"
+            })
+        
         return recommendations
     
-    def _generate_ai_insights(self) -> str:
-        """Generate AI insights summary (simple version)"""
-        summary = self._get_summary_stats()
-        patterns = self._identify_problem_patterns()
-        recs = self._generate_recommendations()
-        
+    def _generate_text_insights(self, summary: Dict, patterns: List, recs: List) -> str:
+        """Generate basic text insights untuk non-AI mode"""
         insights = [
-            f"📊 Summary: {summary['total_applications']} applications, ",
-            f"{summary['response_rate']}% response rate, ",
-            f"{summary['interview_rate']}% interview rate.\n\n"
+            f"📊 Summary: {summary['total_applications']} applications\n",
+            f"📈 Response Rate: {summary['response_rate']}%\n",
+            f"🎯 Interview Rate: {summary['interview_rate']}%\n",
+            f"📉 Rejection Rate: {summary['rejection_rate']}%\n"
         ]
         
         if patterns:
-            insights.append("⚠️ Issues detected:\n")
-            for pattern in patterns[:3]:  # Top 3 issues
-                insights.append(f"• {pattern['message']}\n")
+            insights.append("\n⚠️ Issues Detected:\n")
+            for pattern in patterns[:3]:
+                insights.append(f"• {pattern['description']}\n")
         
         if recs:
             insights.append("\n🎯 Recommendations:\n")
-            for rec in recs[:3]:  # Top 3 recommendations
+            for rec in recs[:3]:
                 insights.append(f"• {rec['action']} - {rec['reason']}\n")
         
         return "".join(insights)
+    
+    def quick_analysis(self) -> Dict:
+        """Quick analysis tanpa detail lengkap"""
+        summary = self._get_summary_stats()
+        
+        return {
+            "total_applications": summary["total_applications"],
+            "response_rate": summary["response_rate"],
+            "interview_rate": summary["interview_rate"],
+            "status": "good" if summary["interview_rate"] > 10 else "needs_improvement",
+            "timestamp": datetime.now().isoformat()
+        }
 
 
-# Simple analyzer tanpa AI eksternal dulu
+# Simple analyzer untuk backward compatibility
 class SimpleAnalyzer(RejectionAnalyzer):
-    """Simplified analyzer tanpa dependency eksternal"""
+    """Simplified analyzer (compatible dengan kode lama)"""
     
     def analyze(self) -> Dict:
         """Simple analysis untuk MVP"""
-        return self.analyze_patterns()
+        return self.analyze_patterns(include_ai=False)

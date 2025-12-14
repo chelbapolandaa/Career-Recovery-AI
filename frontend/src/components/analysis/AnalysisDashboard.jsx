@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { analysisAPI } from "../../services/api";
+import AIAnalysisTab from './AIAnalysisTab';
 
 const AnalysisDashboard = () => {
   const [insights, setInsights] = useState(null);
   const [rolePerformance, setRolePerformance] = useState(null);
+  const [aiAnalysis, setAiAnalysis] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('insights');
 
@@ -14,12 +16,14 @@ const AnalysisDashboard = () => {
   const fetchAnalysisData = async () => {
     try {
       setLoading(true);
-      const [insightsRes, roleRes] = await Promise.all([
+      const [insightsRes, roleRes, aiRes] = await Promise.all([
         analysisAPI.getQuickInsights(),
-        analysisAPI.getRolePerformance()
+        analysisAPI.getRolePerformance(),
+        analysisAPI.getAIAnalysis(90, true)
       ]);
       setInsights(insightsRes.data);
       setRolePerformance(roleRes.data);
+      setAiAnalysis(aiRes.data);
     } catch (error) {
       console.error('Error fetching analysis data:', error);
     } finally {
@@ -83,7 +87,6 @@ const AnalysisDashboard = () => {
 
     return (
       <div>
-        {/* Summary Cards */}
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
@@ -133,7 +136,6 @@ const AnalysisDashboard = () => {
           </div>
         </div>
 
-        {/* Insights */}
         <div style={{
           background: 'white',
           borderRadius: '12px',
@@ -171,7 +173,6 @@ const AnalysisDashboard = () => {
           )}
         </div>
 
-        {/* Recommendations */}
         {insights.recommendations && insights.recommendations.length > 0 && (
           <div style={{
             background: 'white',
@@ -248,7 +249,6 @@ const AnalysisDashboard = () => {
 
     return (
       <div>
-        {/* Best Role Highlight */}
         {rolePerformance.best_role && (
           <div style={{
             background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
@@ -271,7 +271,6 @@ const AnalysisDashboard = () => {
           </div>
         )}
 
-        {/* Role Performance Table */}
         <div style={{
           background: 'white',
           borderRadius: '12px',
@@ -349,7 +348,6 @@ const AnalysisDashboard = () => {
         </p>
       </div>
 
-      {/* Tabs */}
       <div style={{
         display: 'flex',
         gap: '1rem',
@@ -371,7 +369,7 @@ const AnalysisDashboard = () => {
             transition: 'all 0.3s'
           }}
         >
-          💡 AI Insights
+          💡 Quick Insights
         </button>
         <button
           onClick={() => setActiveTab('roles')}
@@ -389,14 +387,50 @@ const AnalysisDashboard = () => {
         >
           👔 Role Performance
         </button>
+        <button
+          onClick={() => setActiveTab('ai')}
+          style={{
+            padding: '0.75rem 1.5rem',
+            background: activeTab === 'ai' ? '#667eea' : 'white',
+            color: activeTab === 'ai' ? 'white' : '#667eea',
+            border: '2px solid #667eea',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontWeight: 'bold',
+            fontSize: '1rem',
+            transition: 'all 0.3s',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}
+        >
+          <span>🤖</span>
+          <span>AI Analysis</span>
+          {aiAnalysis?.ai_insights && (
+            <span style={{
+              background: '#48bb78',
+              color: 'white',
+              borderRadius: '50%',
+              width: '20px',
+              height: '20px',
+              fontSize: '0.7rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              {aiAnalysis.ai_insights.actionable_recommendations?.length || 0}
+            </span>
+          )}
+        </button>
       </div>
 
-      {/* Content */}
       <div>
-        {activeTab === 'insights' ? renderInsights() : renderRolePerformance()}
+        {activeTab === 'insights' ? renderInsights() : 
+         activeTab === 'roles' ? renderRolePerformance() : 
+         <AIAnalysisTab aiAnalysis={aiAnalysis} onRefresh={fetchAnalysisData} />
+        }
       </div>
 
-      {/* Refresh Button */}
       <div style={{ textAlign: 'center', marginTop: '3rem' }}>
         <button
           onClick={fetchAnalysisData}

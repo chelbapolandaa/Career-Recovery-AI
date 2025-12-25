@@ -1,10 +1,6 @@
-# Di file models/applications.py
-from ..database import Base  # Import Base dari database.py
 from sqlalchemy import Column, Integer, String, Date, Text
-import enum
-
-# Hapus line: Base = declarative_base()
-# Gunakan Base dari database.py
+from sqlalchemy.orm import relationship
+from app.database import Base  # PERBAIKAN: dari app.database
 
 class JobApplication(Base):
     __tablename__ = "job_applications"
@@ -16,3 +12,6 @@ class JobApplication(Base):
     date_applied = Column(Date, nullable=False)
     status = Column(String(50), nullable=False, default="ghosted")
     notes = Column(Text, nullable=True)
+    
+    # Tambahkan relationship untuk strategies
+    strategies = relationship("Strategy", back_populates="application", cascade="all, delete-orphan")

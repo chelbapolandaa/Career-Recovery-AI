@@ -1,35 +1,40 @@
 """
 Career Recovery AI - Main FastAPI Application
-UPDATED VERSION dengan .env loading
 """
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .database import engine, Base
-from dotenv import load_dotenv  # <-- TAMBAHKAN INI
-import os  # <-- TAMBAHKAN INI
+from dotenv import load_dotenv
+import os
 
 print("🚀 Starting Career Recovery AI API...")
 
 # ==================== LOAD .ENV FILE ====================
-# Load environment variables dari .env file
 print("📁 Loading environment variables...")
-load_dotenv()  # Ini akan load .env dari current directory
+load_dotenv()
+
+# Import database
+try:
+    from .database import engine, Base
+    print("✅ Database module loaded")
+    
+    # Create tables
+    Base.metadata.create_all(bind=engine)
+    print("✅ Database tables created/verified")
+    
+except ImportError as e:
+    print(f"❌ Database import error: {e}")
+    raise
 
 # Cek jika GROQ_API_KEY sudah di-load
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 if GROQ_API_KEY:
-    print(f"✅ GROQ_API_KEY loaded: {GROQ_API_KEY[:10]}...{GROQ_API_KEY[-10:] if len(GROQ_API_KEY) > 20 else ''}")
+    print(f"✅ GROQ_API_KEY loaded: {GROQ_API_KEY[:10]}...")
 else:
-    print("❌ GROQ_API_KEY not found in .env")
-    print("💡 Make sure .env file exists in backend/ folder")
-    print("💡 Check if GROQ_API_KEY is set in .env")
+    print("⚠️ GROQ_API_KEY not found in .env")
 
 # Cek AI_ENABLED
 AI_ENABLED = os.getenv("AI_ENABLED", "false").lower() == "true"
 print(f"🤖 AI Enabled: {AI_ENABLED}")
-
-# Create tables
-Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="Career Recovery AI API",
@@ -46,30 +51,32 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Import routers manually (avoid __init__.py issues)
+# Import routers
 print("📦 Importing routers...")
 
 # Module A: Applications
-from .api.applications import router as applications_router
-app.include_router(applications_router, prefix="/api")
-print("✅ Module A: Application Tracker loaded")
+try:
+    from .api.applications import router as applications_router
+    app.include_router(applications_router, prefix="/api")
+    print("✅ Module A: Application Tracker loaded")
+except ImportError as e:
+    print(f"⚠️ Module A: Failed to load - {e}")
 
-# Module B: Analysis (try to load)
+# Module B: Analysis
 try:
     from .api.analysis import router as analysis_router
     app.include_router(analysis_router, prefix="/api")
     print("✅ Module B: Rejection Analyzer loaded")
 except ImportError as e:
     print(f"⚠️ Module B: Failed to load - {e}")
-    # Create dummy router for analysis
-    from fastapi import APIRouter
-    analysis_router = APIRouter()
-    
-    @analysis_router.get("/analysis/test")
-    def analysis_test():
-        return {"message": "Analysis module loading, check server logs"}
-    
-    app.include_router(analysis_router, prefix="/api")
+
+# Module C: Strategy Engine
+try:
+    from .api.strategies import router as strategies_router
+    app.include_router(strategies_router, prefix="/api")
+    print("✅ Module C: Strategy Engine loaded")
+except ImportError as e:
+    print(f"⚠️ Module C: Failed to load - {e}")
 
 @app.get("/")
 async def root():
@@ -77,38 +84,11 @@ async def root():
         "message": "Career Recovery AI API",
         "status": "running",
         "docs": "/docs",
-        "ai_enabled": AI_ENABLED,
         "modules": {
-            "A": "Application Tracker - ✅ READY",
-            "B": "Rejection Analyzer - ✅ LOADED",
-            "C": "Strategy Engine - TODO",
-            "D": "Burnout Monitor - TODO",
-            "E": "Weekly Report - TODO"
-        },
-        "endpoints": {
-            "applications": "/api/applications",
-            "analysis": "/api/analysis/*",
-            "swagger": "/docs"
+            "A": "Application Tracker",
+            "B": "Rejection Analyzer", 
+            "C": "Strategy Engine"
         }
     }
 
-@app.get("/health")
-async def health_check():
-    return {"status": "healthy"}
-
-@app.get("/env-check")
-async def env_check():
-    """Endpoint untuk cek environment variables"""
-    return {
-        "groq_api_key_loaded": bool(os.getenv("GROQ_API_KEY")),
-        "ai_enabled": os.getenv("AI_ENABLED", "false"),
-        "groq_model": os.getenv("GROQ_MODEL", "not set"),
-        "env_vars": {k: "***" if "KEY" in k else v for k, v in os.environ.items() if "GROQ" in k or "AI" in k}
-    }
-
-print("🎯 API ready! Available endpoints:")
-print("  • http://localhost:8000/")
-print("  • http://localhost:8000/docs")
-print("  • http://localhost:8000/api/applications")
-print("  • http://localhost:8000/api/analysis/*")
-print("  • http://localhost:8000/env-check (check .env loading)")
+print("🎯 API ready! Visit http://localhost:8000/docs")
